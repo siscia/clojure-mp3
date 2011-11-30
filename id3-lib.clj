@@ -63,7 +63,7 @@
 	      frame-content frame-array]
 	  (when *debug*
 	    (printf "Frame %d: %s, Size: %d, Content: %s\n" frame-no frame-title
-		    size-of-frame frame-content))
+		    size-of-frame (apply str (map char frame-content))))
 	  (recur (+ 1 frame-no)
 		 (drop (+ 10 size-of-frame) frame-start)
 		 (+ total-bytes-so-far 10 size-of-frame)
