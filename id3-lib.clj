@@ -1,17 +1,16 @@
+;; License MIT
 (ns mp3)
 
 (def *debug* true)
 
-(defn string-from-character-list
-  [x] (apply str x))
-
 (defn pack-with-add [n-el coll] coll)
 
-; This is my testbed MP3 parsing clojure file
+;; This is a fork of the onewland testbed MP3 parsing by siscia
 (defn load-mp3
   #^{:doc "load-mp3 loads an mp3 and returns its ID3 information"}
   ([filename] 
-     (def input-array (make-array Byte/TYPE 1000))
+     (def input-array (make-array Byte/TYPE 1000)) ;; I don't like it
+     ;; too much but i'm not sure that there is another way, so...
      (let [input-stream (new java.io.FileInputStream filename)]
 	 (printf "%d bytes read\n" (.read input-stream input-array))
 	 (if (= (take 5 input-array) '(0x49 0x44 0x33 0x03 0x00))
@@ -39,17 +38,22 @@
     (cons (apply + (map int (take 2 list-of-two-byte-characters)))
 	  (create-unicode-char-list (drop 2 list-of-two-byte-characters)))))
 
+(defn string-to-unicode [stringa]
+  (map int stringa))
+
 (defn to-digit [b]
   (if b 1 0))
 
-(defn to-binary
-  #^{:doc "This function inputs a number (x) and outputs a list of bits"}
-  ([pad-width x]
-     (map to-digit 
-	  (reverse 
-	   (take pad-width 
-		 (map (partial bit-test x) 
-		      (iterate inc 0)))))))
+(defn change-base
+  #^{:doc "This function inputs a number, n, and a base, base, and convert the number in the base"}
+  [n base]
+  (Integer/toString n base))
+
+(defn to-binary [n]
+  (Integer/toString n 2))
+
+(defn string-to-binary [string]
+  (map to-binary (string-to-unicode string)))
 
 (defn read-id3-tags [frame-array header-size]
   (loop [frame-no 0 frame-start frame-array total-bytes-so-far 0 acc (hash-map)]
@@ -59,7 +63,7 @@
 			      (bit-shift-left (nth frame-start 6) 8)
 			      (nth frame-start 7))]
 	(let [frame-array (take size-of-frame (drop 11 frame-start))
-	      frame-title (string-from-character-list (map char (take 4 frame-start)))
+	      frame-title (apply str (map char (take 4 frame-start)))
 	      frame-content frame-array]
 	  (when *debug*
 	    (printf "Frame %d: %s, Size: %d, Content: %s\n" frame-no frame-title
