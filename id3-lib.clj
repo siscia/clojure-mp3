@@ -5,24 +5,36 @@
 
 (defn pack-with-add [n-el coll] coll)
 
+(defn dimension-id3 [size]
+  #{:doc "Return the lenght of a frame by an array of bit of the size frame"}
+  (assert (= (count size) 4) "Need of 4 elements")
+  (+ (bit-shift-left (nth size 0) 21)
+     (bit-shift-left (nth size 1) 14)
+     (bit-shift-left (nth size 2) 7)
+     (nth size 3)))
+
+(defn read-kind-of-frames [header]
+  #^{:doc "take the 10 byte of the header frame and return the kind of the frame"}
+  (apply str (map char take 4 header)))
+
 ;; This is a fork of the onewland testbed MP3 parsing by siscia
 (defn load-mp3
   #^{:doc "load-mp3 loads an mp3 and returns its ID3 information"}
-  ([filename] 
-     (def input-array (make-array Byte/TYPE 1000)) ;; I don't like it
+  ([filename]
+     (def input-array (make-array Byte/TYPE 2000)) ;; I don't like it
      ;; too much but i'm not sure that there is another way, so...
      (let [input-stream (new java.io.FileInputStream filename)]
 	 (printf "%d bytes read\n" (.read input-stream input-array))
 	 (if (= (take 5 input-array) '(0x49 0x44 0x33 0x03 0x00))
-	   (do (printf "ID3v2 tag found!\n")
+	   (do (printf "ID3v2 tag found!\n %d" (nth input-array 9))
 	       (let [rest-of-header (drop 5 input-array)]
+                 (pr "Check bit.\n")
 		 (when (bit-test (first rest-of-header) 7) (pr "Unsynchronization set.\n"))
-		 (when (bit-test (first rest-of-header) 6) (pr "Extended header set.\n"))
+		 (when (bit-test (first rest-of-header) 6) (do (def extend-header true) (pr "Extended header set.\n")))
 		 (when (bit-test (first rest-of-header) 5) (pr "Experimental indicator set.\n"))
-		 (let [header-size (+ (bit-shift-left (nth rest-of-header 1) 21)
-				      (bit-shift-left (nth rest-of-header 2) 14)
-				      (bit-shift-left (nth rest-of-header 3) 7)
-				      (nth rest-of-header 4))]
+                 (when (bit-test (first rest-of-header) 4) (pr "Footer present.\n"))
+		 (let [header-size 
+                       (dimension-id3 (take 4 (drop 1 rest-of-header)))] ;;No considerate a Extended header
 		   (printf "Header length = %d\n" header-size)
 		   (let [audio-frames-start (drop (+ 5 header-size) rest-of-header)]
 		     (let [sync-word (take 2 audio-frames-start)]
@@ -73,3 +85,4 @@
 		 (+ total-bytes-so-far 10 size-of-frame)
 		 (assoc acc frame-title frame-content))))
       acc)))
+
