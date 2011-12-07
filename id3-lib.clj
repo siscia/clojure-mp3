@@ -13,9 +13,20 @@
      (bit-shift-left (nth size 2) 7)
      (nth size 3)))
 
-(defn read-kind-of-frames [header]
+(defn- read-kind-of-frames [header]
   #^{:doc "take the 10 byte of the header frame and return the kind of the frame"}
-  (apply str (map char take 4 header)))
+  (assert (= (count header) 10) "Need of all the frame")
+  (apply str (map char (take 4 header))))
+
+(defn- read-dimension-frame [header]
+  #^{:doc "take the 10 byte header and return the dimension of the frames"}
+  (assert (= (count header) 10) "Need of all the frames")
+  (dimension-id3 (take 4 (drop 4 header))))
+
+(defn- read-flag-frames [header]
+  #^{:doc "return the flags of the frames"}
+  (assert (= (count header) 10) "Need of all the frame")
+  (apply str (map char (take 2 (drop 8 header)))))
 
 ;; This is a fork of the onewland testbed MP3 parsing by siscia
 (defn load-mp3
@@ -36,12 +47,8 @@
 		 (let [header-size 
                        (dimension-id3 (take 4 (drop 1 rest-of-header)))] ;;No considerate a Extended header
 		   (printf "Header length = %d\n" header-size)
-		   (let [audio-frames-start (drop (+ 5 header-size) rest-of-header)]
-		     (let [sync-word (take 2 audio-frames-start)]
-		       
-		     ))
 		   (do (.close input-stream)		 
-		       (read-id3-tags (drop 5 rest-of-header) header-size)))))
+		       (read-id3-tags (drop 10 input-array) header-size)))))
 	   (pr "Not a valid MP3 with ID3v2 tags")))))
 
 (defn create-unicode-char-list [list-of-two-byte-characters]
@@ -70,12 +77,9 @@
 (defn read-id3-tags [frame-array header-size]
   (loop [frame-no 0 frame-start frame-array total-bytes-so-far 0 acc (hash-map)]
     (if (< total-bytes-so-far header-size)      
-      (let [size-of-frame  (+ (bit-shift-left (nth frame-start 4) 24)
-			      (bit-shift-left (nth frame-start 5) 16)
-			      (bit-shift-left (nth frame-start 6) 8)
-			      (nth frame-start 7))]
+      (let [size-of-frame  (read-dimension-frame (take 10 frame-start))]
 	(let [frame-array (take size-of-frame (drop 11 frame-start))
-	      frame-title (apply str (map char (take 4 frame-start)))
+	      frame-title (read-kind-of-frames (take 10 frame-start))
 	      frame-content frame-array]
 	  (when *debug*
 	    (printf "Frame %d: %s, Size: %d, Content: %s\n" frame-no frame-title
