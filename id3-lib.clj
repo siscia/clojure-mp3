@@ -7,7 +7,7 @@
 
 (defn dimension-synchsafe [size]
   #{:doc "Return the lenght of a frame by an array of bit of the size frame"}
-  (assert (= (count size) 4) "Need of 4 elements")
+ ; (assert (= (count size) 4) "Need of all 4 elements")
   (+ (bit-shift-left (nth size 0) 21)
      (bit-shift-left (nth size 1) 14)
      (bit-shift-left (nth size 2) 7)
@@ -15,12 +15,12 @@
 
 (defn- read-kind-of-frames [header]
   #^{:doc "take the 10 byte of the header frame and return the kind of the frame"}
-  (assert (= (count header) 10) "Need of all the frame")
+ ; (assert (= (count header) 10) "Need of all the frame")
   (apply str (map char (take 4 header))))
 
 (defn- read-dimension-frame [header]
   #^{:doc "take the 10 byte header and return the dimension of the frames"}
-  (assert (= (count header) 10) "Need of all the frames")
+ ; (assert (= (count header) 10) "Need of all the frames")
   (dimension-synchsafe (take 4 (drop 4 header))))
 
 (defn- read-flag-frames [header]
@@ -79,13 +79,14 @@
 		       (read-id3-tags id3-no-header header-size)))))
 	   (pr "Not a valid MP3 with ID3v2 tags")))))
 
-;(defn get-tag [filename]
-;  (let [header-array (byte-array 10),
-;        input-strea (new java.io.FileInputStream filename)]
-;    (do (.read input-stream header-array))
-;    (let [header-size (dimension-synchsafe (drop 6 header-array))
-;          tag-array (byte-array header-size)]
-;      ((.read )))))
+(defn get-tag [filename]
+  (with-open [input-stream (new java.io.FileInputStream filename)]
+    (let [header-array (byte-array 10)]
+      (do (.read input-stream header-array))
+      (let [header-size (dimension-synchsafe (drop 6 header-array)),
+	    tag-array (byte-array header-size)]
+	(do (.read input-stream tag-array))
+	[tag-array, header-size] ))))
 
 (defn read-id3-tags [frame-array header-size]
   (loop [frame-no 0 frame-start frame-array total-bytes-so-far 0 acc (hash-map)]
@@ -96,7 +97,7 @@
 	      frame-content frame-array]
 	  (when *debug*
 	    (printf "Frame %d: %s, Size: %d, Content: %s\n" frame-no frame-title
-		    size-of-frame (apply str (map char frame-content))))
+		    size-of-frame (apply str (map char  frame-content))))
 	  (recur (+ 1 frame-no)
 		 (drop (+ 10 size-of-frame) frame-start)
 		 (+ total-bytes-so-far 10 size-of-frame)
