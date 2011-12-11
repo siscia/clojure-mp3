@@ -103,3 +103,6 @@
 		 (assoc acc frame-title frame-content))))
       acc)))
 
+(ns tag-as-object :extend mp3)
+
+
